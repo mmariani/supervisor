@@ -1209,7 +1209,7 @@ class ServerOptions(Options):
             # has "user=foo" (same user) in it.
             return
 
-        if current_uid != 0:
+        if current_uid != 0 and sys.platform != 'cygwin':
             return "Can't drop privilege as nonroot user"
 
         gid = pwrec[3]
@@ -1232,7 +1232,10 @@ class ServerOptions(Options):
             os.setgid(gid)
         except OSError:
             return 'Could not set group id of effective user'
-        os.setuid(uid)
+        if sys.platform == 'cygwin':
+            os.setreuid(-1, uid)
+        else:
+            os.setuid(uid)
 
     def waitpid(self):
         # need pthread_sigmask here to avoid concurrent sigchild, but
@@ -1403,7 +1406,7 @@ class ServerOptions(Options):
         elif not (stat.S_IMODE(st[stat.ST_MODE]) & 0111):
             raise NotExecutable("command at %r is not executable" % filename)
 
-        elif not os.access(filename, os.X_OK):
+        elif not os.access(filename, os.X_OK) and sys.platform != 'cygwin':
             raise NoPermission("no permission to run command %r" % filename)
 
     def reopenlogs(self):
